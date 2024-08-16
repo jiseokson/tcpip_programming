@@ -1,6 +1,6 @@
-!.gitignore
 !*/
 */*
 !*.[ch]
 !*.md
 !Makefile
+!.gitignore
