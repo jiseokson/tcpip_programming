@@ -52,77 +52,69 @@ typedef struct {
 ```
 
 ## Server
-
+`main()` 함수의 동작을 살펴보자.
 ```c
-ssize_t rcv_size = 0, total_rcv_size = 0, expected_rcv_size = -1;
-unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
+recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
+result = eval_msg(rcv_buffer);
+make_result_msg(snd_buffer, result);
 
-while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
+write(clnt_sock, snd_buffer, sizeof(msg_header_t) + sizeof(opr_t));
+```
+`recv_msg()` 함수로 클라이언트로부터 메시지를 수신한 뒤 `eval_msg()` 함수로 결과를 계산한다. 이후 `make_result_msg()` 함수를 이용해 응답 메시지를 완성한다.
+
+이제 세부 함수의 동작을 살펴보자.
+```c
+void recv_msg(int sock, unsigned char buffer[], const size_t buffer_size)
 {
-    rcv_size = read(clnt_sock, rcv_buffer + total_rcv_size, BUFFER_SIZE);
-    if (rcv_size == -1)
+    ssize_t rcv_size = 0, total_rcv_size = 0, expected_rcv_size = -1;
+
+    while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
     {
-        perror("read()");
-        exit(1);
+        rcv_size = read(sock, buffer + total_rcv_size, buffer_size);
+        total_rcv_size += rcv_size;
+        if (rcv_size == -1)
+        {
+            perror("read()");
+            exit(1);
+        }
+        if (expected_rcv_size == -1 && total_rcv_size > 0)
+            expected_rcv_size = *(msg_size_t *)buffer;
     }
-    if (expected_rcv_size == -1 && total_rcv_size > 0)
-        expected_rcv_size = *(msg_size_t *)rcv_buffer;
-    total_rcv_size += rcv_size;
 }
 ```
 메시지의 초반을 수신한 직후에는 `size` 필드를 조사해 수신되기로 기대되는 전체 크기 `expected_rcv_size`를 설정한다.
 누적된 수신 크기 `total_rcv_size`가 `expected_rcv_size`에 도달할 때까지 데이터를 수신해 `rcv_buffer`에 저장한다.
 
 ```c
-unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
-opr_t *oprs;
+typedef opr_t (*op_func_t)(opr_t, opr_t);
+static op_func_t extract_op_func(msg_header_t msg_header);
 
-rcv_msg_header = *(msg_header_t *)rcv_buffer;
-oprs = (int *)(rcv_buffer + sizeof(msg_header_t));
-```
-수신된 데이터로부터 메시지 헤더와 피연산자를 추출한다.
-
-```c
-unsigned char snd_buffer[BUFFER_SIZE] = {0,};
-opr_t result;
-
-*(msg_header_t *)snd_buffer = (msg_header_t){1, 1, '='};
-*(opr_t *)(snd_buffer + sizeof(msg_header_t)) = result;
-```
-계산된 결과를 이용해 응답할 메시지를 완성한다.
-
-## Client
-
-```c
-unsigned char snd_buffer[BUFFER_SIZE] = {0,};
-msg_header_t snd_msg_header;
-opr_t *oprs;
-
-printf("opr cnt: ");
-scanf("%hhd", &snd_msg_header.opr_cnt);
-fflush(stdin);
-printf("op(+, -, *, /): ");
-scanf("%c", &snd_msg_header.op);
-fflush(stdin);
-snd_msg_header.size = sizeof(msg_header_t) + sizeof(opr_t) * snd_msg_header.opr_cnt;
-
-*(msg_header_t *)snd_buffer = snd_msg_header;
-
-oprs = (int *)(snd_buffer + sizeof(msg_header_t));
-for (int i = 0; i < snd_msg_header.opr_cnt; ++i)
+opr_t eval_msg(unsigned char *msg)
 {
-    printf("op %d: ", i + 1);
-    scanf("%d", oprs + i);
-    fflush(stdin);
+    msg_header_t msg_header = *(msg_header_t *)msg;
+    opr_t *oprs = (opr_t *)(msg + sizeof(msg_header_t));
+    op_func_t op_func = extract_op_func(msg_header);
+    opr_t result;
+
+    result = oprs[0];
+    for (msg_opr_cnt_t i = 1; i < msg_header.opr_cnt; ++i)
+        result = op_func(result, oprs[i]);
+    return result;
 }
 ```
-사용자 입력으로부터 요청 메시지를 완성한다. 완성된 요청 메시지는 서버로 전송된다.
+수신된 데이터로부터 메시지 헤더와 피연산자를 추출한 뒤 결과를 계산한다.
 
+## Client
+`main()` 함수의 동작을 살펴보자.
 ```c
-unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
-opr_t result;
+snd_msg_header = make_msg_prompt(snd_buffer);
+write(sock, snd_buffer, snd_msg_header.size);
 
-result = *(opr_t *)(rcv_buffer + sizeof(msg_header_t));
+recv_msg(sock, rcv_buffer, BUFFER_SIZE);
+result = eval_msg(rcv_buffer);
 printf("Result from calc server: %d\n", result);
 ```
-요청에 대한 응답을 수신한 후 이로부터 결과를 추출한다.
+`make_msg_prompt()` 함수를 이용해 사용자의 입력으로부터 요청 메시지를 완성한다. 요청 메시지는 함수의 인자인 `snd_buffer`에 저장된다.
+`recv_msg()` 함수를 통해 수신된 메시지는 다시 `eval_msg()` 함수에 전달되고 결과를 계산한다.
+
+`eval_msg()` 함수는 서버 구현에 이용된 함수와 같은 함수이다.
