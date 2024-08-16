@@ -2,12 +2,7 @@
 
 #include "msg.h"
 
-msg_header_t make_msg_header(unsigned char buffer[], msg_opr_cnt_t opr_cnt, msg_op_t op)
-{
-    msg_size_t msg_size = sizeof(opr_t) * opr_cnt;
-
-    return *(msg_header_t *)buffer = (msg_header_t){msg_size, opr_cnt, op};
-}
+static msg_header_t make_msg_header(unsigned char buffer[], msg_opr_cnt_t opr_cnt, msg_op_t op);
 
 msg_header_t make_result_msg(unsigned char buffer[], opr_t result)
 {
@@ -38,4 +33,11 @@ msg_header_t make_msg_prompt(unsigned char buffer[])
     }
 
     return make_msg_header(buffer, opr_cnt, op);
+}
+
+static msg_header_t make_msg_header(unsigned char buffer[], msg_opr_cnt_t opr_cnt, msg_op_t op)
+{
+    msg_size_t msg_size = sizeof(opr_t) * opr_cnt;
+
+    return *(msg_header_t *)buffer = (msg_header_t){msg_size, opr_cnt, op};
 }
