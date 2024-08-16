@@ -5,14 +5,9 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#include "msg_header.h"
+#include "msg.h"
 
 #define BUFFER_SIZE 1024
-
-static opr_t op_plus(opr_t a, opr_t b);
-static opr_t op_sub(opr_t a, opr_t b);
-static opr_t op_mul(opr_t a, opr_t b);
-static opr_t op_div(opr_t a, opr_t b);
 
 int main(int argc, char *argv[])
 {
@@ -22,11 +17,9 @@ int main(int argc, char *argv[])
 
     unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
     unsigned char snd_buffer[BUFFER_SIZE] = {0,};
-    msg_header_t rcv_msg_header;
     ssize_t rcv_size = 0, total_rcv_size = 0, expected_rcv_size = -1;
 
-    op_func_t op_func;
-    opr_t *oprs, result;
+    opr_t result;
 
     if (argc != 2)
     {
@@ -69,6 +62,7 @@ int main(int argc, char *argv[])
     while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
     {
         rcv_size = read(clnt_sock, rcv_buffer + total_rcv_size, BUFFER_SIZE);
+        total_rcv_size += rcv_size;
         if (rcv_size == -1)
         {
             perror("read()");
@@ -76,33 +70,9 @@ int main(int argc, char *argv[])
         }
         if (expected_rcv_size == -1 && total_rcv_size > 0)
             expected_rcv_size = *(msg_size_t *)rcv_buffer;
-        total_rcv_size += rcv_size;
     }
     
-    rcv_msg_header = *(msg_header_t *)rcv_buffer;
-    oprs = (int *)(rcv_buffer + sizeof(msg_header_t));
-    
-    switch (rcv_msg_header.op)
-    {
-    case '+':
-        op_func = op_plus;
-        break;
-    case '-':
-        op_func = op_sub;
-        break;
-    case '*':
-        op_func = op_mul;
-        break;
-    case '/':
-        op_func = op_div;
-        break;
-    }
-
-    result = oprs[0];
-    for (int i = 1; i < rcv_msg_header.opr_cnt; ++i)
-    {
-        result = op_func(result, oprs[i]);
-    }
+    result = eval_msg(rcv_buffer);
 
     *(msg_header_t *)snd_buffer = (msg_header_t){1, 1, '='};
     *(opr_t *)(snd_buffer + sizeof(msg_header_t)) = result;
@@ -113,24 +83,4 @@ int main(int argc, char *argv[])
     close(serv_sock);
 
     return 0;
-}
-
-static opr_t op_plus(opr_t a, opr_t b)
-{
-    return a + b;
-}
-
-static opr_t op_sub(opr_t a, opr_t b)
-{
-    return a - b;
-}
-
-static opr_t op_mul(opr_t a, opr_t b)
-{
-    return a * b;
-}
-
-static opr_t op_div(opr_t a, opr_t b)
-{
-    return a / b;
 }

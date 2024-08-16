@@ -15,3 +15,5 @@ typedef struct {
     msg_opr_cnt_t opr_cnt;
     msg_op_t op;
 } msg_header_t;
+
+opr_t eval_msg(unsigned char *msg);

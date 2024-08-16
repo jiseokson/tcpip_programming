@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#include "msg_header.h"
+#include "msg.h"
 
 #define BUFFER_SIZE 1024
 
@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
     while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
     {
         rcv_size = read(sock, rcv_buffer + total_rcv_size, BUFFER_SIZE);
+        total_rcv_size += rcv_size;
         if (rcv_size == -1)
         {
             perror("read()");
@@ -75,10 +76,9 @@ int main(int argc, char *argv[])
         }
         if (expected_rcv_size == -1 && total_rcv_size > 0)
             expected_rcv_size = *(msg_size_t *)rcv_buffer;
-        total_rcv_size += rcv_size;
     }
 
-    result = *(opr_t *)(rcv_buffer + sizeof(msg_header_t));
+    result = eval_msg(rcv_buffer);
     printf("Result from calc server: %d\n", result);
 
     close(sock);
