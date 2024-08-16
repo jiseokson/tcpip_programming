@@ -16,4 +16,5 @@ typedef struct {
     msg_op_t op;
 } msg_header_t;
 
+void recv_msg(int sock, unsigned char buffer[], const size_t buffer_size);
 opr_t eval_msg(unsigned char *msg);

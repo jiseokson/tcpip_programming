@@ -16,7 +16,6 @@ int main(int argc, char *argv[])
 
     unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
     unsigned char snd_buffer[BUFFER_SIZE] = {0,};
-    ssize_t rcv_size = 0, total_rcv_size = 0, expected_rcv_size = -1;
 
     msg_header_t snd_msg_header;
     opr_t *oprs, result;
@@ -65,19 +64,7 @@ int main(int argc, char *argv[])
 
     write(sock, snd_buffer, snd_msg_header.size);
 
-    while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
-    {
-        rcv_size = read(sock, rcv_buffer + total_rcv_size, BUFFER_SIZE);
-        total_rcv_size += rcv_size;
-        if (rcv_size == -1)
-        {
-            perror("read()");
-            exit(1);
-        }
-        if (expected_rcv_size == -1 && total_rcv_size > 0)
-            expected_rcv_size = *(msg_size_t *)rcv_buffer;
-    }
-
+    recv_msg(sock, rcv_buffer, BUFFER_SIZE);
     result = eval_msg(rcv_buffer);
     printf("Result from calc server: %d\n", result);
 
