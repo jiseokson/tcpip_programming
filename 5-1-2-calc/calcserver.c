@@ -60,9 +60,7 @@ int main(int argc, char *argv[])
 
     recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
     result = eval_msg(rcv_buffer);
-
-    *(msg_header_t *)snd_buffer = (msg_header_t){1, 1, '='};
-    *(opr_t *)(snd_buffer + sizeof(msg_header_t)) = result;
+    make_result_msg(snd_buffer, result);
 
     write(clnt_sock, snd_buffer, sizeof(msg_header_t) + sizeof(opr_t));
 

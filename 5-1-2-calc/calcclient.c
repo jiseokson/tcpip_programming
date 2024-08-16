@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     unsigned char snd_buffer[BUFFER_SIZE] = {0,};
 
     msg_header_t snd_msg_header;
-    opr_t *oprs, result;
+    opr_t result;
 
     if (argc != 3)
     {
@@ -44,24 +44,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    printf("opr cnt: ");
-    scanf("%hhd", &snd_msg_header.opr_cnt);
-    fflush(stdin);
-    printf("op(+, -, *, /): ");
-    scanf("%c", &snd_msg_header.op);
-    fflush(stdin);
-    snd_msg_header.size = sizeof(msg_header_t) + sizeof(opr_t) * snd_msg_header.opr_cnt;
-
-    *(msg_header_t *)snd_buffer = snd_msg_header;
-
-    oprs = (int *)(snd_buffer + sizeof(msg_header_t));
-    for (int i = 0; i < snd_msg_header.opr_cnt; ++i)
-    {
-        printf("op %d: ", i + 1);
-        scanf("%d", oprs + i);
-        fflush(stdin);
-    }
-
+    snd_msg_header = make_msg_prompt(snd_buffer);
     write(sock, snd_buffer, snd_msg_header.size);
 
     recv_msg(sock, rcv_buffer, BUFFER_SIZE);
