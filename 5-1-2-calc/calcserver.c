@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
             perror("read()");
             exit(1);
         }
-        if (expected_rcv_size == -1)
+        if (expected_rcv_size == -1 && total_rcv_size > 0)
             expected_rcv_size = *(msg_size_t *)rcv_buffer;
         total_rcv_size += rcv_size;
     }
