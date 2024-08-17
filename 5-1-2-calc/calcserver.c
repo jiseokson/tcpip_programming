@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
     unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
     unsigned char snd_buffer[BUFFER_SIZE] = {0,};
 
+    msg_t rcv_msg, snd_msg;
     opr_t result;
 
     if (argc != 2)
@@ -58,11 +59,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
-    result = eval_msg(rcv_buffer);
-    make_result_msg(snd_buffer, result);
-
-    write(clnt_sock, snd_buffer, sizeof(msg_header_t) + sizeof(opr_t));
+    rcv_msg = recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
+    result = eval_msg(rcv_msg);
+    snd_msg = make_result_msg(snd_buffer, result);
+    write(clnt_sock, &snd_msg, snd_msg.size);
 
     close(clnt_sock);
     close(serv_sock);

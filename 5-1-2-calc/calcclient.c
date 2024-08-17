@@ -14,10 +14,10 @@ int main(int argc, char *argv[])
     int sock;
     struct sockaddr_in serv_addr;
 
-    unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
     unsigned char snd_buffer[BUFFER_SIZE] = {0,};
+    unsigned char rcv_buffer[BUFFER_SIZE] = {0,};
 
-    msg_header_t snd_msg_header;
+    msg_t snd_msg, rcv_msg;
     opr_t result;
 
     if (argc != 3)
@@ -44,11 +44,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    snd_msg_header = make_msg_prompt(snd_buffer);
-    write(sock, snd_buffer, snd_msg_header.size);
+    snd_msg = make_msg_prompt(snd_buffer);
+    write(sock, &snd_msg, snd_msg.size);
 
-    recv_msg(sock, rcv_buffer, BUFFER_SIZE);
-    result = eval_msg(rcv_buffer);
+    rcv_msg = recv_msg(sock, rcv_buffer, BUFFER_SIZE);
+    result = eval_msg(rcv_msg);
     printf("Result from calc server: %d\n", result);
 
     close(sock);
