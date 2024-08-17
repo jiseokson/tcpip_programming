@@ -44,30 +44,37 @@ typedef int8_t msg_size_t;
 typedef int8_t msg_opr_cnt_t;
 typedef int8_t msg_op_t;
 
-typedef struct {
+typedef struct msg_header_s {
     msg_size_t size;
     msg_opr_cnt_t opr_cnt;
     msg_op_t op;
 } msg_header_t;
+
+typedef struct msg_s {
+    msg_size_t size;
+    msg_opr_cnt_t opr_cnt;
+    msg_op_t op;
+    opr_t *oprs;
+} msg_t;
 ```
 
 ## Server
 
 `main()` 함수의 동작을 살펴보자.
 ```c
-recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
-result = eval_msg(rcv_buffer);
-make_result_msg(snd_buffer, result);
-
-write(clnt_sock, snd_buffer, sizeof(msg_header_t) + sizeof(opr_t));
+rcv_msg = recv_msg(clnt_sock, rcv_buffer, BUFFER_SIZE);
+result = eval_msg(rcv_msg);
+snd_msg = make_result_msg(snd_buffer, result);
+write(clnt_sock, &snd_msg, snd_msg.size);
 ```
 `recv_msg()` 함수로 클라이언트로부터 메시지를 수신한 뒤 `eval_msg()` 함수로 결과를 계산한다. 이후 `make_result_msg()` 함수를 이용해 응답 메시지를 완성한다.
 
 이제 세부 함수의 동작을 살펴보자.
 ```c
-void recv_msg(int sock, unsigned char buffer[], const size_t buffer_size)
+msg_t recv_msg(int sock, unsigned char buffer[], const size_t buffer_size)
 {
     ssize_t rcv_size = 0, total_rcv_size = 0, expected_rcv_size = -1;
+    msg_t msg;
 
     while (expected_rcv_size == -1 || total_rcv_size < expected_rcv_size)
     {
@@ -81,6 +88,10 @@ void recv_msg(int sock, unsigned char buffer[], const size_t buffer_size)
         if (expected_rcv_size == -1 && total_rcv_size > 0)
             expected_rcv_size = *(msg_size_t *)buffer;
     }
+
+    memcpy(&msg, buffer, sizeof(msg_header_t));
+    msg.oprs = (opr_t *)(buffer + sizeof(msg_header_t));
+    return msg;
 }
 ```
 메시지의 초반을 수신한 직후에는 `size` 필드를 조사해 수신되기로 기대되는 전체 크기 `expected_rcv_size`를 설정한다.
@@ -90,16 +101,14 @@ void recv_msg(int sock, unsigned char buffer[], const size_t buffer_size)
 typedef opr_t (*op_func_t)(opr_t, opr_t);
 static op_func_t extract_op_func(msg_header_t msg_header);
 
-opr_t eval_msg(unsigned char *msg)
+opr_t eval_msg(msg_t msg)
 {
-    msg_header_t msg_header = *(msg_header_t *)msg;
-    opr_t *oprs = (opr_t *)(msg + sizeof(msg_header_t));
-    op_func_t op_func = extract_op_func(msg_header);
+    op_func_t op_func = extract_op_func(msg.op);
     opr_t result;
 
-    result = oprs[0];
-    for (msg_opr_cnt_t i = 1; i < msg_header.opr_cnt; ++i)
-        result = op_func(result, oprs[i]);
+    result = msg.oprs[0];
+    for (msg_opr_cnt_t i = 1; i < msg.opr_cnt; ++i)
+        result = op_func(result, msg.oprs[i]);
     return result;
 }
 ```
@@ -109,11 +118,11 @@ opr_t eval_msg(unsigned char *msg)
 
 `main()` 함수의 동작을 살펴보자.
 ```c
-snd_msg_header = make_msg_prompt(snd_buffer);
-write(sock, snd_buffer, snd_msg_header.size);
+snd_msg = make_msg_prompt(snd_buffer);
+write(sock, &snd_msg, snd_msg.size);
 
-recv_msg(sock, rcv_buffer, BUFFER_SIZE);
-result = eval_msg(rcv_buffer);
+rcv_msg = recv_msg(sock, rcv_buffer, BUFFER_SIZE);
+result = eval_msg(rcv_msg);
 printf("Result from calc server: %d\n", result);
 ```
 `make_msg_prompt()` 함수를 이용해 사용자의 입력으로부터 요청 메시지를 완성한다. 요청 메시지는 함수의 인자인 `snd_buffer`에 저장된다.
