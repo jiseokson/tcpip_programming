@@ -9,7 +9,7 @@ GETHOSTNAME_OBJS := gethostname.o
 all: gethostname
 
 clean:
-	rm -f  *.o
+	rm -f gethostname *.o
 
 gethostname: $(GETHOSTNAME_OBJS)
 	$(CC) $(LDFLAGS) $(GETHOSTNAME_OBJS) -o $@
