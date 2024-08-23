@@ -6,3 +6,4 @@
 !.gitignore
 
 !7-1*/server_data.txt
+!11-2*/in.log
